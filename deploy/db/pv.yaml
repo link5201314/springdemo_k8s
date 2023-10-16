@@ -1,0 +1,18 @@
+# web-persistent-volume.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-db-volume
+  labels:
+    type: local
+spec:
+  claimRef:
+    namespace: default
+    name: pvc-db-volume-sbdemo-postgres-sfs-0 
+  storageClassName: manual
+  capacity:
+    storage: 1G
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/home/bigred/projects/sbdemo/db"

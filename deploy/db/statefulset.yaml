@@ -26,6 +26,7 @@ spec:
   - metadata:
       name: pvc-db-volume
     spec:
+      volumeName: pv-db-volume 
       accessModes:
       - ReadWriteOnce
       resources:

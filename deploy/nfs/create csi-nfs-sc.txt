@@ -1,0 +1,19 @@
+#安裝 NFS CSI driver
+curl -skSL https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/v4.3.0/deploy/install-driver.sh | bash -s v4.3.0 --
+
+#檢視 NFS CSI driver
+kubectl -n kube-system get pod -o wide -l app=csi-nfs-controller
+
+#建立 NFS CSI Storage Class
+echo 'apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs-csi
+provisioner: nfs.csi.k8s.io
+parameters:
+  server: $IP
+  share: /opt/nfs
+reclaimPolicy: Retain
+volumeBindingMode: Immediate' | envsubst > ~/wulin/yaml/csi-nfs-sc.yaml   
+
+ka -f  ~/wulin/yaml/csi-nfs-sc.yaml  
