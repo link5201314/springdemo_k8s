@@ -1,6 +1,11 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  labels:
+    app: dm1
+    tags.datadoghq.com/env: prod
+    tags.datadoghq.com/service: springdemo
+    tags.datadoghq.com/version: "1.0"
   name: 
     sbdemo-apserver
 spec:
@@ -12,6 +17,12 @@ spec:
     metadata:
       labels:
         app: sbdemo-apserver
+        tags.datadoghq.com/env: prod
+        tags.datadoghq.com/service: springdemo
+        tags.datadoghq.com/version: "1.0"
+        admission.datadoghq.com/enabled: "true"
+      annotations:
+        admission.datadoghq.com/java-lib.version: v1.21.0
     spec:
       containers:
       - name: apserver
@@ -29,7 +40,13 @@ spec:
           - name: REDIS_HOST
             value: "sbdemo-redis-service"
           - name: REDIS_PORT
-            value: "6379"     
+            value: "6379"   
+          - name: LOGGING_LEVEL_ROOT
+            value: DEBUG
+          - name: DD_PROFILING_ENABLED
+            value: "true"
+          - name: DD_LOGS_INJECTION
+            value: "true"            
         volumeMounts:
           - mountPath: "/opt/picDir"
             name: apserver-pvc
