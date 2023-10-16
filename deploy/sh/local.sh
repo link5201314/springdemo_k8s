@@ -9,12 +9,13 @@ kubectl create configmap nginx-conf --from-file=deploy/web/nginx.conf
 kubectl create configmap server-conf --from-file=deploy/web/server.conf 
 
 ### Create deployments and services
-
+echo "Create deployments and services"
 # redis
 kubectl apply -f deploy/redis/deployment.yaml
 kubectl apply -f deploy/redis/service.yaml
 
 # db
+kubectl apply -f deploy/db/pv.yaml
 kubectl apply -f deploy/db/statefulset.yaml
 kubectl apply -f deploy/db/service.yaml
 
