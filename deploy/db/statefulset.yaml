@@ -3,6 +3,7 @@ kind: StatefulSet
 metadata:
   name: 
     sbdemo-postgres-sfs
+  namespace: todoweb
 spec:
   serviceName: sbdemo-postgres-service
   replicas: 1

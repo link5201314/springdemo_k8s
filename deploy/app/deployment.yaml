@@ -3,6 +3,7 @@ kind: Deployment
 metadata:
   name: 
     sbdemo-apserver
+  namespace: todoweb
 spec:
   replicas: 3
   selector:

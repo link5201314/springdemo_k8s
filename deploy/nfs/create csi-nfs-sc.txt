@@ -4,16 +4,20 @@ curl -skSL https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/v4.3.
 #檢視 NFS CSI driver
 kubectl -n kube-system get pod -o wide -l app=csi-nfs-controller
 
+#設定namespace
+kubectl create namespace todoweb
+
 #建立 NFS CSI Storage Class
 echo 'apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: nfs-csi
+  name: nfs-csi-todoweb
+  namespace: todoweb
 provisioner: nfs.csi.k8s.io
 parameters:
   server: $IP
-  share: /opt/nfs
+  share: /opt/nfs/todoweb
 reclaimPolicy: Retain
-volumeBindingMode: Immediate' | envsubst > ~/wulin/yaml/csi-nfs-sc.yaml   
+volumeBindingMode: Immediate' | envsubst > ~/wulin/yaml/csi-nfs-todoweb-sc.yaml   
 
-ka -f  ~/wulin/yaml/csi-nfs-sc.yaml  
+ka -f  ~/wulin/yaml/csi-nfs-todoweb-sc.yaml  

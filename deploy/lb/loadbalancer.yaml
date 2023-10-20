@@ -2,6 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: sbdemo-nginx-lb
+  namespace: todoweb
 spec:
   externalIPs:
   - 192.168.29.4
