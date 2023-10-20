@@ -8,7 +8,7 @@ metadata:
     type: local
 spec:
   claimRef:
-    namespace: default
+    namespace: todoweb
     name: pvc-db-volume-sbdemo-postgres-sfs-0 
   storageClassName: manual
   capacity:

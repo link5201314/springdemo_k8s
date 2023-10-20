@@ -5,8 +5,8 @@
 echo "Creating Spring Boot demo application for Kubernetes on local environment"
 
 ### Create configmap for nginx
-kubectl create configmap nginx-conf --from-file=deploy/web/nginx.conf 
-kubectl create configmap server-conf --from-file=deploy/web/server.conf 
+kubectl create configmap nginx-conf --from-file=deploy/web/nginx.conf -n todoweb 
+kubectl create configmap server-conf --from-file=deploy/web/server.conf -n todoweb
 
 ### Create deployments and services
 echo "Create deployments and services"
