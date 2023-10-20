@@ -26,6 +26,7 @@ spec:
   volumeClaimTemplates:
   - metadata:
       name: pvc-db-volume
+      namespace: todoweb
     spec:
       volumeName: pv-db-volume 
       accessModes:
