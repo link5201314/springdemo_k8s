@@ -29,7 +29,11 @@ kubectl apply -f deploy/web/deployment.yaml
 kubectl apply -f deploy/web/service.yaml
 
 # LB
-kubectl apply -f deploy/lb/loadbalancer.yaml
+#kubectl apply -f deploy/lb/loadbalancer.yaml
+
+#Ingress
+kubectl apply -f deploy/lb/nodeport.yaml
+kubectl apply -f deploy/lb/ingress.yaml
 
 CTX=$(kubectl config current-context)
 echo ${CTX}
