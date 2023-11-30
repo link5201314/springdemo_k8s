@@ -17,12 +17,17 @@ spec:
     spec:
       containers:
        - name: postgres
-         image: dayan888/springdemo:postgres9.6
+         image: isaac0815/springdemo:postgres9.6
          ports:
           - containerPort: 5432
          volumeMounts:
          - name: pvc-db-volume
-           mountPath: /var/lib/postgresql
+           mountPath: /postgresql
+         env:
+         - name: POSTGRES_PASSWORD
+           value: postgres
+         - name: PGDATA
+           value: /postgresql/data
   volumeClaimTemplates:
   - metadata:
       name: pvc-db-volume
