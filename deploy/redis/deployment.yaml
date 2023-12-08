@@ -15,6 +15,6 @@ spec:
     spec:
       containers:
       - name: redis
-        image: isaac0815/springdemo:redis
+        image: isaac0815/redis:latest
         ports:
         - containerPort: 6379

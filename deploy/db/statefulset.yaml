@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
        - name: postgres
-         image: isaac0815/springdemo:postgres9.6
+         image: isaac0815/db:latest
          ports:
           - containerPort: 5432
          volumeMounts:

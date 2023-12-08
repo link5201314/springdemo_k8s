@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: apserver
-        image: isaac0815/springdemo:apserver
+        image: isaac0815/apserver:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
