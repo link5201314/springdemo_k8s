@@ -18,6 +18,7 @@ spec:
       containers:
        - name: postgres
          image: isaac0815/db:latest
+         imagePullPolicy: IfNotPresent 
          ports:
           - containerPort: 5432
          volumeMounts:

@@ -17,7 +17,7 @@ spec:
       containers:
       - name: apserver
         image: isaac0815/apserver:latest
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent 
         ports:
         - containerPort: 8080
         env:
