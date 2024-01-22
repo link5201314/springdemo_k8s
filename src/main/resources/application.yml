@@ -29,3 +29,8 @@ logging:
 
 app:
   picDir: /opt/picDir
+management:
+  endpoints:
+    web:
+      exposure:
+        include: prometheus
