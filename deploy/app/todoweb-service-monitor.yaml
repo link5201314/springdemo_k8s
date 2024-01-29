@@ -1,0 +1,16 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: todoweb-app
+  namespace: monitoring
+  labels:
+    team: frontend
+spec:
+  namespaceSelector:
+    matchNames:
+    - todoweb
+  selector:
+    matchLabels:
+      app: sbdemo-apserver
+  endpoints:
+  - port: http-port
