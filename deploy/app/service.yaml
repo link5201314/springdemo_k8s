@@ -3,6 +3,8 @@ kind: Service
 metadata:
   name: sbdemo-apserver-service
   namespace: todoweb
+  labels:
+    app: sbdemo-apserver
 spec:
   type: ClusterIP
   ports:

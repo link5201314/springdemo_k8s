@@ -19,7 +19,8 @@ spec:
         image: isaac0815/apserver:latest
         imagePullPolicy: IfNotPresent 
         ports:
-        - containerPort: 8080
+        - name: web
+          containerPort: 8080
         env:
           - name: SPRING_PROFILES_ACTIVE
             value: "prd"
