@@ -14,3 +14,4 @@ spec:
       app: sbdemo-apserver
   endpoints:
   - port: http-port
+    path: /actuator/prometheus
