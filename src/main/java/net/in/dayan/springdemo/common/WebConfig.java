@@ -26,7 +26,7 @@ public class WebConfig extends WebSecurityConfigurerAdapter {
 
     @Override
     public void  configure(WebSecurity web) {
-        web.ignoring().antMatchers("/", "/img/*", "/js/*", "/css/*");
+        web.ignoring().antMatchers("/", "/img/*", "/js/*", "/css/*", "/actuator/prometheus");
     }
 
     @Override
