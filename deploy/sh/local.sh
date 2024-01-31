@@ -15,7 +15,7 @@ kubectl apply -f deploy/redis/deployment.yaml
 kubectl apply -f deploy/redis/service.yaml
 
 # db
-kubectl apply -f deploy/db/pv.yaml
+#kubectl apply -f deploy/db/pv.yaml
 kubectl apply -f deploy/db/statefulset.yaml
 kubectl apply -f deploy/db/service.yaml
 
