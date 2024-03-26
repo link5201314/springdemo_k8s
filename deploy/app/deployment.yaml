@@ -17,7 +17,7 @@ spec:
       containers:
       - name: apserver
         image: isaac0815/apserver:latest
-        imagePullPolicy: IfNotPresent 
+        imagePullPolicy: Always 
         ports:
         - name: web
           containerPort: 8080
@@ -31,7 +31,11 @@ spec:
           - name: REDIS_HOST
             value: "sbdemo-redis-service"
           - name: REDIS_PORT
-            value: "6379"     
+            value: "6379"  
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: "http://simplest-collector.default:4318"
+          - name: OTEL_RESOURCE_ATTRIBUTES
+            value: "service.name=demoweb"  
         volumeMounts:
           - mountPath: "/opt/picDir"
             name: apserver-pvc
