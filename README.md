@@ -1,450 +1,229 @@
-# Spring Boot demo application for Kubernetes
+# 專案 Fork 來源
+本專案 Fork 自：<https://github.com/dayan888/springdemo_k8s>
 
-* This is a sample application for testing basic configuration of web application that is aimed to run on Kubernetes environment.
-* The application consists of the following servers:
-  * Web server (using nginx)
-  * Application server (using tomcat [embedded in spring boot])
-  * DB server (using postgres)
-  * Session server (using redis for keeping application server's session)
-  * Network Storage (Using PVC Dynamic provisioning or nfs)
-* Web server and Application server are stateless, so they can be scaled to multiple pods.
-* DB and Session server are stateful. Especially data on DB server must be kept permanently. While session server does not need to be permanent but if the data are lost, it causes poor user experience that means that users must login again and if user enter something to save, it can be lost. But compared to DB, it is not so critical.
-* This demo uses single pod for both DB and Session server. If you want to use on production environment, I strongly suggest to use PaaS for both, at least for DB server.
-* The application sample is for managing ToDos. It consists in only three pages. Just offering function of security and crud of database table. 
-  * Login Page (ID/PW=admin/111111)
-  * Todo List page
-  * Todo Edit page
-  * Todo contains uploaded images just for testing storage.
-* The purpose is to know configuration of k8s, I made the source code as concise as possible, just enough to cover least functions to test. If you apply this to product, you might want to consider such as validation, security, maintainability, using framework, and so on.
+# springdemo_k8s（中文說明）
 
-## The system structure of this application on k8s
+此專案為 Spring Boot + Kubernetes 的 Todo Web 示範系統，目標是提供一套可在本機與 GKE 佈署的完整樣板，包含 Web、應用程式、資料庫、Redis、儲存與觀測能力。
 
-![](./doc/structure.jpg)
+## 1. 功能與重點
 
-* In production environment, I strongly recommend to use PaaS for DB and Redis.
-* The sample does not offer HA structure on DB and Redis. But the files of DB is not on container but on PV so that if DB is crashed for some reason, DB is automatically start up and data will not be lost unless problem occurs on the Volume.
-* Redis is used with on-memory mode, so if redis is crashed, session is lost. Users have to login again. But this may not be a fatal problem. If you want to make it ha, consider using sentinel or redis by helm.
-* You can configure high availability for DB using streaming replication by yourself. Statefulset-0 is used for master node and greater than 0 are used for slave nodes (You also have to use pgpool for judging master or slave). While this configuration is valid for HA, if you want to use failover (one of slaves promote to master), the order of statefulset become meaningless. In this case, I believe the advantage of using k8s is less than expected. You should use PaaS or Virtual Machine rather than unstable container.
-* Along with DB, configuring shared Storage is another problem. We need to set up ReadWriteMany access for app pods. But standard Persistent Volume Claim may not support this mode. So we need set up manually nfs or glusterfs. If you want to store important data, you have to set up carefully. This example shows you to set up nfs.
-  * see:  https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes
+- 基本功能：登入驗證、Todo CRUD、圖片上傳。
+- 應用程式：Spring Boot（內嵌 Tomcat）。
+- Web：Nginx 反向代理。
+- 資料層：PostgreSQL + Redis Session。
+- 儲存：PVC / NFS，並加入 NFS CSI 使用方式。
+- 觀測：Prometheus metrics + OpenTelemetry Java Agent。
+- 流量入口：支援 Ingress（含 TLS）。
 
-## The structure of this repository 
+## 2. 專案目錄
 
-* src
-  * Java(Spring Boot) Source
-* deploy
-  * Dockefile
-  * k8s manifest
-  * config file
+- `src/`：Spring Boot 程式碼與模板。
+- `deploy/`：Dockerfile、K8s manifests、快速佈署腳本。
+- `deploy/app/`：apserver 佈署與 ServiceMonitor。
+- `deploy/lb/`：Ingress / NodePort / LoadBalancer 設定。
+- `deploy/nfs/`：NFS 與 NFS CSI 相關設定與指引。
+- `deploy/sh/`：`local.sh`、`gke.sh` 自動化佈署腳本。
 
-Basically it is from standard spring boot project structure adding Docker and kubernetes deployments.
+## 3. 執行需求
 
-## Preparation for Local environment
+- JDK 8+
+- Docker
+- Kubernetes 叢集（minikube / Docker Desktop / GKE）
+- kubectl
+- （本機開發）PostgreSQL、Redis
 
-### Prerequisite
+## 4. 本機開發（不走 Kubernetes）
 
-The following application must be installed if you want to run and develop the application locally.
+1. 建置：
 
-* JDK 8+
-* Docker
-* Postgres 9+
-* Redis
-* IntelliJ (or other IDEs)
-
-### DB
-
-* Install postgres and run postgres
-* Run the following command (for Mac or Linux User. In Windows using pgadmin is much easier) and sql to create database and two tables.
-
-```
-initdb -A trust db
-pg_ctl -D db -l logfile start
-
-createuser -s postgres
-psql -U postgres
-create database demodb;
-\q
-```
-
-
-```
-psql -U postgres demodb
-
-create table users (id integer primary key, login character varying(16) not null, password character varying(16) not null);
-create unique index users_ux1 on users(login);
-create table todos (id integer primary key, title character varying(16) not null, status integer default 0 not null, dt timestamp default now() not null);
-create sequence todo_id_seq;
-
-insert into users values(1, 'admin', '111111');
-```
-
-* If you install postgres on other than local, then you have to configure host, user and password on the following key in application.yml.
-  * spring.datasource
-
-### File
-
-* create directory for saving uploaded images. You can change directory by setting value of app.picDir on application.yml.
-
-```
-sudo mkdir /opt/picDir
-sudo chmod 777 /opt/picDir
-```
-
-### Redis
-
-* If you use redis run on docker, follow the next instruction.
-
-```
-docker pull redis
-docker run -d -p 6379:6379 --name redis redis:latest
-```
-* If you use redis on another server, then you have to change the following setting in application.yml.
-  * app.redis
-
-
-### RUN
-
-* Open or Point the following java class on IDE
-  src/main/java/net/in/dayan/springdemo/SpringdemoApplication
-* Run the Application class
-  * If you fail to start tomcat, classpath can be wrong. If there is .classpath file at the top of the project, delete and run again.
-* Or, execute the command:
-  * ./gradlew build -x test
-  * java -jar build/libs/springdemo-0.5.0.jar
-* Open browser and enter http://localhost:8080
-* If login page is shown, enter ID and PW (admin/111111)
-* Create todos. Enter title and upload file.
-
-## RUN on Docker
-
-```
-# create jar
+```bash
 ./gradlew build -x test
-
-# image build
-docker image build -t springdemo:apserver -f deploy/app/Dockerfile .
-
-# To know redis ip address run on docker
-docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' redis
-
-# prepare picDir on host mounted from container
-mkdir /tmp/picDir
-chmod 777 /tmp/picDir
-
-# Run application server on docker (If you run postgres and redis on other than local you have to change env variables)
-docker run --name springdemo -d --rm -e "SPRING_PROFILES_ACTIVE=prd"  -e "DB_URL=jdbc:postgresql://host.docker.internal:5432/demodb?user=postgres&password=postgres" -e "PIC_DIR=/opt/picDir" -e "REDIS_HOST=host.docker.internal" -e "REDIS_PORT=6379" -v /tmp/picDir:/opt/picDir -p 8080:8080 -t springdemo:apserver
-
-# show log
-docker logs -f springdemo
-
-# stop
-docker stop springdemo
-
 ```
 
-## nginx
+2. 啟動：
 
-```
-docker image build -t springdemo:nginx -f deploy/web/Dockerfile2 .
-
-docker run -d --rm  --name nginx -p 80:80 springdemo:nginx
+```bash
+java -jar build/libs/springdemo-0.5.0.jar
 ```
 
-## db
-  
+3. 開啟：`http://localhost:8080/login`
+
+預設帳號：
+- ID：`admin`
+- PW：`111111`
+
+## 5. Docker 建置
+
+建議先定義統一映像前綴（以下以 shell 範例）：
+
+```bash
+export IMAGE_PREFIX=YOUR_REGISTRY/YOUR_NAMESPACE/springdemo
 ```
-docker image build -t springdemo:postgres9.6 -f deploy/db/Dockerfile .
 
-docker run -d -v ./postgres:/var/lib/postgresql/data --name postgres pspringdemo:postgres9.6
-```
+### 5.1 App 映像
 
-## redis
-
-Use official image as it is.
-
-## Configuration for K8S
-
-### Prerequisite 
-
-Before proceeding the following instructions, you need to prepare:
-
-* Kubernetes Environment
-  * Local(Docker for Mac, minikube, etc.)
-  * GKE
-  * Or others
-
-The following instructions are confirmed by kuberenetes of Docker for Mac and GKE. If you tried other environment or had any problem on GKE, please let me know.
-
-
-### image build & push
-
-You should change docker repository for your own. You also have to  replace dayan888 to your repository in k8s manifest yaml.
-
-* apserver
-
-```
+```bash
 ./gradlew build -x test
-
-docker image build -t dayan888/springdemo:apserver -f deploy/app/Dockerfile .
-
-docker push dayan888/springdemo:apserver
+docker image build -t ${IMAGE_PREFIX}-apserver:latest -f deploy/app/Dockerfile .
 ```
 
-* web
+### 5.2 Web 映像
 
-```
-docker image build -t dayan888/springdemo:nginx -f deploy/web/Dockerfile .
-
-docker push dayan888/springdemo:nginx
+```bash
+docker image build -t ${IMAGE_PREFIX}-web:latest -f deploy/web/Dockerfile .
 ```
 
-* db
+### 5.3 DB 映像
 
-```
-docker image build -t dayan888/springdemo:postgres9.6 -f deploy/db/Dockerfile .
-
-docker push dayan888/springdemo:postgres9.6
+```bash
+docker image build -t ${IMAGE_PREFIX}-db:latest -f deploy/db/Dockerfile .
 ```
 
-### Create configmap for nginx
+### 5.4 推送映像（可選）
 
-```
-kubectl create configmap nginx-conf --from-file=deploy/web/nginx.conf 
-kubectl create configmap server-conf --from-file=deploy/web/server.conf 
-```
-
-### Create deployments and services
-
-Deployment should be in the following order:
-
-* redis
-* db
-* apserver
-* web
-* lb or ingress
-
-* Or, first create all services before creating deployment. Otherwise pod fail to start.
-* after executed apply command, do the following command to check.
-
-```
-kubectl get pod --watch
+```bash
+docker push ${IMAGE_PREFIX}-apserver:latest
+docker push ${IMAGE_PREFIX}-web:latest
+docker push ${IMAGE_PREFIX}-db:latest
 ```
 
-* If you see pod status is "CrashLoopBackOff", then something must be wrong.
+### 5.5 同步更新 K8s manifest 的 image
 
-```
-kubectl describe pod [podname]
-kubectl logs [podname] -f
-```
+目前專案內的 manifests 仍含示範 image 名稱（如 `isaac0815/...`、`dayan888/...`），建議以同一前綴統一替換。
 
+```bash
+# 先備份
+cp -r deploy deploy.bak
 
-* redis
+# Linux (GNU sed)
+find deploy -name "*.yaml" -type f \
+  -exec sed -i -e "s#isaac0815/apserver:latest#${IMAGE_PREFIX}-apserver:latest#g" \
+               -e "s#isaac0815/nginx:latest#${IMAGE_PREFIX}-web:latest#g" \
+               -e "s#isaac0815/db:latest#${IMAGE_PREFIX}-db:latest#g" \
+               -e "s#dayan888/springdemo:apserver#${IMAGE_PREFIX}-apserver:latest#g" \
+               -e "s#dayan888/springdemo:nginx#${IMAGE_PREFIX}-web:latest#g" \
+               -e "s#dayan888/springdemo:postgres9.6#${IMAGE_PREFIX}-db:latest#g" {} +
 
-```
-kubectl apply -f deploy/redis/deployment.yaml
-kubectl apply -f deploy/redis/service.yaml
-```
-
-To check installation, do the following.
-
-```
-kubectl run --image=centos:6 --restart=Never --rm -it testpod sh
-sh-4.1# yum install -y telnet
-sh-4.1# telnet sbdemo-redis-service 6379
-SET a 1
-GET a
-QUIT
-```
-
-* db
-
-```
-kubectl apply -f deploy/db/statefulset.yaml
-kubectl apply -f deploy/db/service.yaml
+# macOS (BSD sed)
+find deploy -name "*.yaml" -type f \
+  -exec sed -i '' -e "s#isaac0815/apserver:latest#${IMAGE_PREFIX}-apserver:latest#g" \
+                  -e "s#isaac0815/nginx:latest#${IMAGE_PREFIX}-web:latest#g" \
+                  -e "s#isaac0815/db:latest#${IMAGE_PREFIX}-db:latest#g" \
+                  -e "s#dayan888/springdemo:apserver#${IMAGE_PREFIX}-apserver:latest#g" \
+                  -e "s#dayan888/springdemo:nginx#${IMAGE_PREFIX}-web:latest#g" \
+                  -e "s#dayan888/springdemo:postgres9.6#${IMAGE_PREFIX}-db:latest#g" {} +
 ```
 
-To check installation, do the following.
+> Windows（PowerShell）環境建議改用 VS Code 全域取代或 `Get-ChildItem` + `-replace` 方式處理。
 
+## 6. Kubernetes 佈署
 
-```
-kubectl run --image=postgres:9.6 --restart=Never --rm -it testpod sh
-# psql -U postgres -h sbdemo-postgres-service demodb
-demodb-# select * from users;
-```
+### 6.1 快速佈署腳本
 
-* nfs (For GKE environment)
+- 本機：`deploy/sh/local.sh`
+- GKE：`deploy/sh/gke.sh`
 
-GKE does not support pvc Access Mode with ReadWriteMay. So you need to configure by yourself. This is a little bit complicated but follow the instruction below for creating nfs on GKE.
-At first you have to create nfs server using nfs server image that mounts pvc,
+> 注意：腳本中的 `open`、`stern` 等指令依作業系統可能需要調整。
 
-```
-kubectl apply -f deploy/nfs/nfs-server-gke-pv.yaml
-kubectl apply -f deploy/nfs/nfs-server.yaml
-kubectl apply -f deploy/nfs/nfs-server-service.yaml
-```
+### 6.2 建議手動佈署順序
 
-After that, create pv and pvc for this nfs server that will be mounted by app server pods.
-First you need to get ip address of nfs server.
+1. redis
+2. db
+3. nfs（GKE / 需要 RWX 時）
+4. app
+5. web
+6. ingress 或 loadbalancer
 
-```
-kubectl get svc
-```
+## 7. Prometheus 監控
 
-Then, copy CLUSTR-IP of sbdemo-nfs-server-service and replace value of spec.nfs.server in nfs-pv.yaml.
-The value seems to be not service name that is usually preferable but ip address in case of nfs server.
-Then execute the following commands.
+此專案已加入 Prometheus 指標輸出與 K8s 抓取設定。
 
-```
-kubectl apply -f deploy/nfs/nfs-pv.yaml
-kubectl apply -f deploy/nfs/nfs-pvc.yaml
-```
+- Gradle 依賴：
+  - `spring-boot-starter-actuator`
+  - `micrometer-registry-prometheus`
+- 指標路徑：`/actuator/prometheus`
+- 安全設定已放行該路徑：`src/main/java/net/in/dayan/springdemo/common/WebConfig.java`
+- ServiceMonitor 檔案：`deploy/app/todoweb-service-monitor.yaml`
+  - namespace：`monitoring`
+  - 監控目標 namespace：`todoweb`
+  - endpoint path：`/actuator/prometheus`
+  - port name：`http-port`
 
-* apserver (For GKE environment)
+## 8. OpenTelemetry 追蹤
 
-```
-kubectl apply -f deploy/app/deployment-gke.yaml
-kubectl apply -f deploy/app/service.yaml
-```
+此專案已加入 OpenTelemetry Java Agent。
 
-* apserver (For Local environment)
+- Dockerfile：`deploy/app/Dockerfile`
+  - 複製 `build/libs/opentelemetry-javaagent.jar` 到容器
+  - 以 `-javaagent:/app/opentelemetry-javaagent.jar` 啟動
+- K8s 部署環境變數（`deploy/app/deployment.yaml`）：
+  - `OTEL_EXPORTER_OTLP_ENDPOINT=http://simplest-collector.default:4318`
+  - `OTEL_RESOURCE_ATTRIBUTES=service.name=demoweb`
 
-```
-kubectl apply -f deploy/app/pvc.yaml
+建議：若 Collector 或 Backend 不在 `default` namespace，請調整 endpoint。
+
+## 9. Ingress 設定
+
+Ingress 設定檔：`deploy/lb/ingress.yaml`
+
+- API：`networking.k8s.io/v1`
+- host：`sbdemo.example.com`
+- `/` 轉發至 `sbdemo-nginx-np:80`
+- `/v2/` 轉發至 `web2:8080`
+- TLS secret：`tls-sbdemo`
+
+搭配檔案：
+- `deploy/lb/nodeport.yaml`
+- `deploy/lb/loadbalancer.yaml`
+
+## 10. NFS 與 NFS CSI
+
+### 10.1 NFS（既有方式）
+
+- `deploy/nfs/nfs-server.yaml`
+- `deploy/nfs/nfs-server-service.yaml`
+- `deploy/nfs/nfs-pv.yaml`
+- `deploy/nfs/nfs-pvc.yaml`
+- `deploy/nfs/nfs-server-gke-pv.yaml`
+
+### 10.2 NFS CSI（新增）
+
+說明文件：`deploy/nfs/create csi-nfs-sc.txt`
+
+包含：
+- 安裝 `csi-driver-nfs`
+- 建立 `nfs-csi-todoweb` StorageClass 的範例
+
+目前 manifests 也已使用 CSI StorageClass，例如：
+- App PVC：`deploy/app/pvc.yaml` 使用 `storageClassName: nfs-csi`
+- DB StatefulSet：`deploy/db/statefulset.yaml` 的 volumeClaimTemplates 使用 `storageClassName: nfs-csi`
+
+請依叢集實際 StorageClass 名稱統一（例如 `nfs-csi` 或 `nfs-csi-todoweb`）。
+
+## 11. 重要設定提醒
+
+- 預設帳密與明文密碼僅供示範，請勿直接用於正式環境。
+- 請依環境調整映像名稱（目前部分 manifest 仍是示範 registry）。
+- 若使用 Ingress + TLS，自簽憑證在瀏覽器會需要手動信任。
+- 若 Prometheus 沒抓到指標，先確認：
+  1. `todoweb-service-monitor.yaml` 是否已套用
+  2. Prometheus Operator 是否存在
+  3. Service label、port name、namespace 是否一致
+
+## 12. 參考指令
+
+```bash
+# 觀察資源
+kubectl get pods -n todoweb
+kubectl get svc -n todoweb
+kubectl get ing -n todoweb
+
+# 套用 app 相關
 kubectl apply -f deploy/app/deployment.yaml
 kubectl apply -f deploy/app/service.yaml
+kubectl apply -f deploy/app/todoweb-service-monitor.yaml
 ```
 
-To check installation, do the following.
+## 13. 授權
 
-```
-kubectl run --image=centos:6 --restart=Never --rm -it testpod sh
-sh-4.1# curl -i http://sbdemo-apserver-service:8080/login
-```
-
-* web
-
-Before applying this, do not forget to create configmap.
-
-```
-kubectl apply -f deploy/web/deployment.yaml
-kubectl apply -f deploy/web/service.yaml
-```
-
-* LB / Ingress
-
-If you don't need SSL, Load Balancer is easier to configure.
-
-```
-kubectl apply -f deploy/lb/loadbalancer.yaml
-```
-
-To check installation, do the following.
-
-```
-kubectl get svc --watch
-```
-
-Then, open a browser and enter url below with EXTERNAL_IP found in lb service list.
-
-http://{EXTERNAL_IP}/login
-
-If you use minikube or docker for kubernetes, enter.
-http://localhost/login
-
-* Ingress
-
-Before proceeding ingress, create ssl certificate (for test) and secret
-
-```
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout ~/tls.key -out ~/tls.crt -subj "/CN=sbdemo.example.com"
-kubectl create secret tls --save-config tls-sbdemo --key ~/tls.key --cert ~/tls.crt
-```
-
-To use ingress, you need to create node port to access web server.
-
-```
-kubectl apply -f deploy/lb/nodeport.yaml
-kubectl apply -f deploy/lb/ingress.yaml
-```
-
-After created, copy EXTERNAL IP of ingress and do the following command. It takes long time for EXTERNAL IP to be shown.
-
-```
-curl -i https://{INGRESS_IP} -H "Host: sbdemo.example.com" --insecure
-```
-
-If you get 502 error, GCE's health check goes to / path that returns 302(Redirect). In this case, you have to go to GCP console, move to network service and show load balancer. Then you need to change health check setting (path should be /login and port should be 80).
-
-See. https://github.com/kubernetes/ingress-gce/blob/master/README.md#health-checks
-
-This process also takes long time.
-If you want to test on browser, you should edit hosts file on your local machine.
-
-```
-{INGRESS_IP}  sbdemo.example.com
-```
-
-If your browser give you ERR_SSL_VERSION_OR_CIPHER_MISMATCH, it means registering ingress is not finished yet. You have to wait more. Because this is self sgined certificate, you have to permit access to the site on browser.
- 
-
-To test balancing by path, create web server for test.
-
-```
-kubectl run web2 --image=gcr.io/google-samples/hello-app:2.0 --port=8080
-kubectl expose deployment web2 --target-port=8080 --type=NodePort
-```
-
-* Confirm load balancing
-
-To check apservers' behaviour, you can use stern. You can see the session is kept even processed by different pods.
-
-```
-stern -l app=sbdemo-apserver
-```
-
-Register todo with pic and reload browser, you can see like:
-
-```
-sbdemo-apserver-55f9d9d598-v6fqf apserver 2019-01-05 12:17:49.034  INFO 1 --- [nio-8080-exec-9] n.i.d.springdemo.common.LogInterceptor   : /todo/list
-sbdemo-apserver-55f9d9d598-whrtw apserver 2019-01-05 12:17:49.116  INFO 1 --- [nio-8080-exec-1] n.i.d.springdemo.common.LogInterceptor   : /todo/pic/1
-sbdemo-apserver-55f9d9d598-whrtw apserver 2019-01-05 12:17:56.358  INFO 1 --- [nio-8080-exec-2] n.i.d.springdemo.common.LogInterceptor   : /todo/list
-sbdemo-apserver-55f9d9d598-whrtw apserver 2019-01-05 12:17:56.424  INFO 1 --- [nio-8080-exec-3] n.i.d.springdemo.common.LogInterceptor   : /todo/pic/1
-sbdemo-apserver-55f9d9d598-whrtw apserver 2019-01-05 12:17:58.852  INFO 1 --- [nio-8080-exec-5] n.i.d.springdemo.common.LogInterceptor   : /todo/list
-sbdemo-apserver-55f9d9d598-v6fqf apserver 2019-01-05 12:17:58.935  INFO 1 --- [io-8080-exec-10] n.i.d.springdemo.common.LogInterceptor   : /todo/pic/1
-sbdemo-apserver-55f9d9d598-vkwjq apserver 2019-01-05 12:18:01.489  INFO 1 --- [nio-8080-exec-1] n.i.d.springdemo.common.LogInterceptor   : /todo/list
-sbdemo-apserver-55f9d9d598-v6fqf apserver 2019-01-05 12:18:01.568  INFO 1 --- [nio-8080-exec-1] n.i.d.springdemo.common.LogInterceptor   : /todo/pic/1
-sbdemo-apserver-55f9d9d598-vkwjq apserver 2019-01-05 12:18:03.028  INFO 1 --- [nio-8080-exec-2] n.i.d.springdemo.common.LogInterceptor   : /todo/list
-sbdemo-apserver-55f9d9d598-vkwjq apserver 2019-01-05 12:18:03.090  INFO 1 --- [nio-8080-exec-3] n.i.d.springdemo.common.LogInterceptor   : /todo/pic/1
-```
-
-## Reset
-
-If you want to do from the beginning, execute the following.
-
-```
-kubectl delete secret --all
-kubectl delete configmap --all
-kubectl delete all --all
-```
-
-## Quick start
-
-You can use shell script to install quickly.
-
-### Prerequisite
-
-* kubectl
-* stern
-* open (You can also manually open browser and enter url.)
-
-### minikube or Docker for desktop
-
-```
-sh deploy/sh/local.sh
-```
-
-### GKE
-
-```
-sh deploy/sh/gke.sh
-```
+本專案使用 MIT License，詳見 `LICENSE`。
