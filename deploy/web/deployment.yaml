@@ -23,7 +23,7 @@ spec:
 #        command: [ "/bin/bash" ]
         readinessProbe:
           httpGet:
-            path: /css/style.css
+            path: /healthz
             port: 80
         volumeMounts:
         - name: nginx-conf
