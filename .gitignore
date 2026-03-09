@@ -25,3 +25,17 @@
 /dist/
 /nbdist/
 /.nb-gradle/
+
+### VS Code / Eclipse workspace metadata ###
+.metadata/
+.vscode/
+
+### Logs / OS ###
+*.log
+.DS_Store
+Thumbs.db
+
+### Local env / secrets ###
+.env
+.env.*
+*.local
