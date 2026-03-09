@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: apserver
-        image: isaac0815/apserver:latest
+        image: docker.io/isaac0815/apserver:2026.03.09-1
         imagePullPolicy: IfNotPresent 
         ports:
         - name: web

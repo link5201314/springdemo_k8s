@@ -1,4 +1,4 @@
-FROM openjdk:8-jdk-alpine
+FROM eclipse-temurin:8-jre
 ARG buildver=0.5.0
 
 #RUN ./gradlew build -x test

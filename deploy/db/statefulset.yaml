@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
        - name: postgres
-         image: isaac0815/db:latest
+         image: docker.io/isaac0815/postgres:9.6
          imagePullPolicy: IfNotPresent 
          ports:
           - containerPort: 5432

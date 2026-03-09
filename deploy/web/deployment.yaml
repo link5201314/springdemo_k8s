@@ -16,7 +16,7 @@ spec:
       containers:
       - name: nginx
 #        image: nginx:latest
-        image: isaac0815/nginx:latest
+        image: docker.io/isaac0815/nginx:1.25.3
         imagePullPolicy: IfNotPresent 
         ports:
         - containerPort: 80
