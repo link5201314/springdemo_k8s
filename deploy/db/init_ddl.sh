@@ -1,3 +1,4 @@
+echo ""
 echo "create database demodb;" | psql -U postgres
 
 echo "create table users (id integer primary key, login character varying(16) not null, password character varying(16) not null);"| psql -U postgres demodb
