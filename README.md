@@ -166,6 +166,23 @@ find deploy -name "*.yaml" -type f \
 
 Ingress 設定檔：`deploy/lb/ingress.yaml`
 
+使用 Ingress 前，建議先完成 TLS secret 建立：
+
+```bash
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout ~/tls.key -out ~/tls.crt -subj "/CN=sbdemo.example.com"
+kubectl create secret tls --save-config tls-sbdemo --key ~/tls.key --cert ~/tls.crt
+
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout ~/tls.key -out ~/tls.crt -subj "/CN=grafana.example.com"
+kubectl create secret tls --save-config tls-grafana --key ~/tls.key --cert ~/tls.crt
+```
+
+另外，多數叢集不只一種 Ingress Controller（不一定預設是 nginx），請在 `deploy/lb/ingress.yaml` 指定 `ingressClassName`，例如：
+
+```yaml
+spec:
+  ingressClassName: nginx
+```
+
 - API：`networking.k8s.io/v1`
 - host：`sbdemo.example.com`
 - `/` 轉發至 `sbdemo-nginx-np:80`
